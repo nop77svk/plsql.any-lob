@@ -1,4 +1,4 @@
-# plsql.any-lob
+# Peter's AnyLOB wrappers
 
 Object-oriented, buffered builders for Oracle `CLOB`, `NCLOB` and `BLOB` values, written in PL/SQL.
 
@@ -30,7 +30,7 @@ begin
     l_clob.appendln('first line');
     l_clob.appendln('second line');
     dbms_output.put_line(l_clob.length());
-    dbms_output.put_line(dbms_lob.substr(l_clob.get_value(), 100));
+    dbms_output.put_line(l_clob.get_value());
 end;
 /
 ```
