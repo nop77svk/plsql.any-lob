@@ -568,7 +568,6 @@ object
     -- lengths match, then a regular, contents-based comparison takes place.
     member function compare
         ( i_lob_2                       in phr_${largeTypeScalar}
-        , i_two_nulls_are_equal         in boolean default false
         , i_compare_lengths_first       in boolean default true )
         return number
         parallel_enable,
@@ -576,8 +575,7 @@ object
     -- Overload of {%link compare;1} with {%link phr_utl_boolean "SQL-boolean"} data type input flags.
     member function compare
         ( i_lob_2                       in phr_${largeTypeScalar}
-        , i_two_nulls_are_equal         in varchar2
-        , i_compare_lengths_first       in varchar2 default 'Y' )
+        , i_compare_lengths_first       in varchar2 )
         return number
         parallel_enable,
 
@@ -590,7 +588,6 @@ object
     -- %usage Overload of {%link compare;1} operating on a simple (non-object-encapsulated) ${largeTypeScalarUpper} input value.
     member function compare
         ( i_lob_2                       in ${largeTypeScalar}
-        , i_two_nulls_are_equal         in boolean default false
         , i_compare_lengths_first       in boolean default true )
         return number
         parallel_enable,
@@ -598,8 +595,7 @@ object
     -- Overload of {%link compare;3} with {%link phr_utl_boolean "SQL-boolean"} data type input flags.
     member function compare
         ( i_lob_2                       in ${largeTypeScalar}
-        , i_two_nulls_are_equal         in varchar2
-        , i_compare_lengths_first       in varchar2 default 'Y' )
+        , i_compare_lengths_first       in varchar2 )
         return number
         parallel_enable,
 
@@ -2116,7 +2112,6 @@ end;
 
 member function compare
     ( i_lob_2                       in phr_${largeTypeScalar}
-    , i_two_nulls_are_equal         in boolean
     , i_compare_lengths_first       in boolean )
     return number
     parallel_enable
@@ -2127,19 +2122,11 @@ is
 begin
     if i_lob_2 is null then
         return null;
-    elsif self.length() is null
-        and i_lob_2.length() is null
-    then
-        if i_two_nulls_are_equal then
-            return 0;
-        else
-            return null;
-        end if;
     end if;
 
     if i_compare_lengths_first then
-        l_len_1 := nvl(self.length(), 0);
-        l_len_2 := nvl(i_lob_2.length(), 0);
+        l_len_1 := self.length();
+        l_len_2 := i_lob_2.length();
 
         if l_len_1 < l_len_2 then
             return -0.1;
@@ -2160,7 +2147,6 @@ end;
 
 member function compare
     ( i_lob_2                       in phr_${largeTypeScalar}
-    , i_two_nulls_are_equal         in varchar2
     , i_compare_lengths_first       in varchar2 )
     return number
     parallel_enable
@@ -2169,10 +2155,6 @@ begin
     pragma inline(compare, 'YES');
     return self.compare(
         i_lob_2 => i_lob_2,
-        i_two_nulls_are_equal => $if $$pfcm_boolean
-            $then is_true(i_two_nulls_are_equal)
-            $else lower(i_two_nulls_are_equal) in ('y','yes','1','true')
-        $end,
         i_compare_lengths_first => $if $$pfcm_boolean
             $then is_true(i_compare_lengths_first)
             $else lower(i_compare_lengths_first) in ('y','yes','1','true')
@@ -2183,7 +2165,6 @@ end;
 
 member function compare
     ( i_lob_2                       in ${largeTypeScalar}
-    , i_two_nulls_are_equal         in boolean
     , i_compare_lengths_first       in boolean )
     return number
     parallel_enable
@@ -2192,7 +2173,6 @@ begin
     pragma inline(compare, 'YES');
     return self.compare(
         i_lob_2 => phr_${largeTypeScalar}.use_lob(i_lob_2),
-        i_two_nulls_are_equal => i_two_nulls_are_equal,
         i_compare_lengths_first => i_compare_lengths_first
     );
 end;
@@ -2200,7 +2180,6 @@ end;
 
 member function compare
     ( i_lob_2                       in ${largeTypeScalar}
-    , i_two_nulls_are_equal         in varchar2
     , i_compare_lengths_first       in varchar2 )
     return number
     parallel_enable
@@ -2209,7 +2188,6 @@ begin
     pragma inline(compare, 'YES');
     return self.compare(
         i_lob_2 => phr_${largeTypeScalar}.use_lob(i_lob_2),
-        i_two_nulls_are_equal => i_two_nulls_are_equal,
         i_compare_lengths_first => i_compare_lengths_first
     );
 end;
@@ -2223,8 +2201,7 @@ is
 begin
     return self.compare(
         i_lob_2 => i_lob_2,
-        i_two_nulls_are_equal => 'Y',
-        i_compare_lengths_first => 'Y'
+        i_compare_lengths_first => true
     );
 end;
 
