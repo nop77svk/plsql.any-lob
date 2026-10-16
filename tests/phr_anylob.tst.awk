@@ -99,6 +99,8 @@ BEGIN {
 		vars["smallReverseTypeScalar"] = "raw";
 		vars["emptyLobFunction"] = "empty_clob";
 		vars["toLobFunction"] = "to_clob";
+		vars["multibyteValue"] = "unistr('\\011B')";
+		vars["multibyteReverseValue"] = "hextoraw('C49B')";
 	}
 	else if (modus == "nclob")
 	{
@@ -114,6 +116,8 @@ BEGIN {
 		vars["smallReverseTypeScalar"] = "raw";
 		vars["emptyLobFunction"] = "empty_clob";
 		vars["toLobFunction"] = "to_nclob";
+		vars["multibyteValue"] = "to_nchar(unistr('\\011B'))";
+		vars["multibyteReverseValue"] = "hextoraw('C49B')";
 	}
 	else if (modus == "blob")
 	{
@@ -129,6 +133,8 @@ BEGIN {
 		vars["smallReverseTypeScalar"] = "varchar2";
 		vars["emptyLobFunction"] = "empty_blob";
 		vars["toLobFunction"] = "to_blob";
+		vars["multibyteValue"] = "hextoraw('C49B')";
+		vars["multibyteReverseValue"] = "unistr('\\011B')";
 	}
 	else
 	{
