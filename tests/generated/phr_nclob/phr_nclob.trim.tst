@@ -1,5 +1,5 @@
 PL/SQL Developer Test script 3.0
-212
+259
 declare
     c_assertion_failed_error        constant pls_integer := -20000;
     c_no_error                      constant pls_integer := 0;
@@ -19,6 +19,7 @@ declare
     c_big_chunk_count               constant pls_integer := trunc(16383 / c_chunk_length) + 1;
     c_big_length                    constant pls_integer := c_big_chunk_count * c_chunk_length;
     c_threshold                     constant pls_integer := 16383;
+    c_small_secondary_buffer_size   constant pls_integer := 2;
     c_charset                       constant varchar2(32) := 'AL32UTF8';
     l_lob                           phr_nclob;
     l_result                        phr_nclob;
@@ -39,6 +40,19 @@ declare
         ( i_name                        in varchar2
         , i_expected                    in number
         , i_actual                      in number )
+    is
+    begin
+        if i_expected = i_actual or (i_expected is null and i_actual is null) then
+            dbms_output.put_line('PASS '||i_name);
+        else
+            raise_application_error(c_assertion_failed_error, 'FAIL '||i_name||': expected ['||i_expected||'] actual ['||i_actual||']');
+        end if;
+    end;
+
+    procedure assert_flag
+        ( i_name                        in varchar2
+        , i_expected                    in varchar2
+        , i_actual                      in varchar2 )
     is
     begin
         if i_expected = i_actual or (i_expected is null and i_actual is null) then
@@ -91,6 +105,39 @@ declare
         end if;
 
         return l_result;
+    end;
+
+    function native_lob_of_length
+        ( i_length                      in pls_integer )
+        return nclob
+    is
+        l_result                        nclob := native_lob();
+        l_remaining                     pls_integer := i_length;
+        l_amount                        pls_integer;
+    begin
+        while l_remaining > 0 loop
+            l_amount := least(l_remaining, c_chunk_length);
+            dbms_lob.writeAppend(
+                lob_loc => l_result,
+                amount => l_amount,
+                buffer => n'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+            );
+            l_remaining := l_remaining - l_amount;
+        end loop;
+
+        return l_result;
+    end;
+
+    function new_lob_at_level
+        ( i_level                       in pls_integer )
+        return phr_nclob
+    is
+    begin
+        return case i_level
+            when c_level_nonbuffered then phr_nclob.new_tmp_lob().nonbuffered()
+            when c_level_double then phr_nclob.new_tmp_lob().double_buffered()
+            else phr_nclob.new_tmp_lob().tripple_buffered(i_buffer_size => c_small_secondary_buffer_size)
+        end;
     end;
 
     function big_native_lob

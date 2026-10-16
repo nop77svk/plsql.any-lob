@@ -16,4 +16,5 @@
     c_big_chunk_count               constant pls_integer := trunc(${smallLargeSwitchThreshold} / c_chunk_length) + 1;
     c_big_length                    constant pls_integer := c_big_chunk_count * c_chunk_length;
     c_threshold                     constant pls_integer := ${smallLargeSwitchThreshold};
+    c_small_secondary_buffer_size   constant pls_integer := 2;
     c_charset                       constant varchar2(32) := '${rawConversionCharset}';

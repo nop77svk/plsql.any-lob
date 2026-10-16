@@ -97,6 +97,8 @@ BEGIN {
 		vars["largeTypeScalarUpper"] = "CLOB";
 		vars["smallLargeSwitchThreshold"] = "32767";
 		vars["smallReverseTypeScalar"] = "raw";
+		vars["emptyLobFunction"] = "empty_clob";
+		vars["toLobFunction"] = "to_clob";
 	}
 	else if (modus == "nclob")
 	{
@@ -110,6 +112,8 @@ BEGIN {
 		vars["largeTypeScalarUpper"] = "NCLOB";
 		vars["smallLargeSwitchThreshold"] = "16383";
 		vars["smallReverseTypeScalar"] = "raw";
+		vars["emptyLobFunction"] = "empty_clob";
+		vars["toLobFunction"] = "to_nclob";
 	}
 	else if (modus == "blob")
 	{
@@ -123,6 +127,8 @@ BEGIN {
 		vars["largeTypeScalarUpper"] = "BLOB";
 		vars["smallLargeSwitchThreshold"] = "32767";
 		vars["smallReverseTypeScalar"] = "varchar2";
+		vars["emptyLobFunction"] = "empty_blob";
+		vars["toLobFunction"] = "to_blob";
 	}
 	else
 	{
