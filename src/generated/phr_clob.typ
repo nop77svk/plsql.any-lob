@@ -2376,20 +2376,20 @@ begin
     end if;
 
     --
-    $if utl_ident.is_oracle_server $then
     if self.is_secure_file() then
-        pragma inline(fsync, 'YES');
-        self.fsync();
+        $if utl_ident.is_oracle_server $then
+            pragma inline(fsync, 'YES');
+            self.fsync();
 
-        dbms_lob.fragment_delete(
-            lob_loc => self.the_value$,
-            amount => i_amount,
-            offset => i_offset
-        );
+            dbms_lob.fragment_delete(
+                lob_loc => self.the_value$,
+                amount => i_amount,
+                offset => i_offset
+            );
+        $else
+            raise_application_error(phr_utl_exc.CE_Not_Implemented, 'Cannot call dbms_lob.fragment_delete() outside of Oracle server');
+        $end
     elsif c_trailing_chunk_offset <= c_lob_length then
-    $else
-    if c_trailing_chunk_offset <= c_lob_length then
-    $end
         pragma inline(fsync, 'YES');
         self.fsync();
 
