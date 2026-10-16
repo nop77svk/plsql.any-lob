@@ -1301,9 +1301,9 @@ end;
 
 member function with_eoln
     ( i_eoln                        in ${smallTypeScalar} )
-    return phr_clob
+    return phr_${largeTypeScalar}
 is
-    l_result                        phr_clob := self;
+    l_result                        phr_${largeTypeScalar} := self;
 begin
     pragma inline(use_eoln, 'YES');
     l_result.use_eoln(

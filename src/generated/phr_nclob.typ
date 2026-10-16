@@ -1301,9 +1301,9 @@ end;
 
 member function with_eoln
     ( i_eoln                        in nvarchar2 )
-    return phr_clob
+    return phr_nclob
 is
-    l_result                        phr_clob := self;
+    l_result                        phr_nclob := self;
 begin
     pragma inline(use_eoln, 'YES');
     l_result.use_eoln(
