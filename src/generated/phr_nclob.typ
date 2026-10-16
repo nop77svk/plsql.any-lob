@@ -27,7 +27,7 @@ object
 
     -- Factory returning a phr_nclob instance initialized with new, empty temporary NCLOB.
     --
-    -- %param i_buffered_writes Should the LOB appends be internally resolved via ${smallTypeScalarUpper} buffer?
+    -- %param i_buffered_writes Should the LOB appends be internally resolved via an in-memory nvarchar2 buffer?
     -- %param i_cache The value passed to the CACHE parameter of the underlying DBMS_LOB.NEWTEMPORARY() call.
     -- %param i_duration The value passed to the DURATION parameter of the underlying DBMS_LOB.NEWTEMPORARY() call.
     -- %return Instance of the phr_nclob class.
@@ -43,40 +43,51 @@ object
         , i_duration                    in pls_integer default null )
         return phr_nclob,
 
-    -- (Internal) Change the level of buffering and call .fsync() if lowering
+    -- (Internal) Change the level of buffering (clamped to 0..2) and call .fsync() beforehand so that no pending appends are lost.
     member procedure aux_change_buffering_level$
         ( i_target_level                in integer ),
 
+    -- (Internal) (Re)create the secondary buffer used by the tripple buffering.
     member procedure aux_init_secondary_buffer$,
 
-    -- Switch off write buffering.
+    -- Switch off write buffering. Any pending appends get flushed first.
     member procedure use_nonbuffered_writes,
 
-    -- Switch on double buffering.
+    -- Switch on double buffering. Any pending appends get flushed first.
     member procedure use_double_buffering,
 
-    -- Switch on tripple buffering.
+    -- Switch on tripple buffering. Any pending appends get flushed first.
+    --
+    -- %param i_buffer_size The size (in characters/bytes) the secondary buffer is allowed to grow to before it gets flushed
+    -- to the contained NCLOB. Negative values are treated as zero.
     member procedure use_tripple_buffering
         ( i_buffer_size                 in simple_integer default 1048576 ),
 
-    -- Use the specified character as EOLN for line-appends.
+    -- Use the specified nvarchar2 as EOLN for line-appends.
+    --
+    -- %param i_eoln The line terminator appended by {%link appendln;1}. NULL means no line terminator.
     member procedure use_eoln
         ( i_eoln                        in nvarchar2 ),
 
-    -- Builder returning a phr_nclob instance with buffering switched off.
+    -- Builder returning a copy of this phr_nclob instance with buffering switched off.
+    -- %usage Calls {%link use_nonbuffered_writes} on the copy, so the original instance is not affected.
     member function nonbuffered
         return phr_nclob,
 
-    -- Builder returning a phr_nclob instance with double buffering switched on.
+    -- Builder returning a copy of this phr_nclob instance with double buffering switched on.
+    -- %usage Calls {%link use_double_buffering} on the copy, so the original instance is not affected.
     member function double_buffered
         return phr_nclob,
 
-    -- Builder returning a phr_nclob instance with tripple buffering switched on.
+    -- Builder returning a copy of this phr_nclob instance with tripple buffering switched on.
+    -- %param i_buffer_size See {%link use_tripple_buffering}.
+    -- %usage Calls {%link use_tripple_buffering} on the copy, so the original instance is not affected.
     member function tripple_buffered
         ( i_buffer_size                 in simple_integer default 1048576 )
         return phr_nclob,
 
-    -- Builder returning a phr_nclob instance with the specified character as EOLN for line-appends.
+    -- Builder returning a copy of this phr_nclob instance with the specified nvarchar2 as EOLN for line-appends.
+    -- %param i_eoln See {%link use_eoln}.
     member function with_eoln
         ( i_eoln                        in nvarchar2 )
         return phr_nclob,
@@ -254,45 +265,56 @@ object
 
     -- Factory returning a phr_nclob instance initialized directly with an existing LOB locator.
     --
-    -- %param i_value The input NCLOB locator this object is to be initialized with.
+    -- %param i_value The input NCLOB locator this object is to be initialized with. NULL is allowed,
+    -- yielding an instance with a NULL locator that behaves as an empty LOB for {%link length} and {%link is_empty}.
     -- %param i_buffered_writes See the {%link new_tmp_lob;1} factory.
     -- %return Instance of the phr_nclob class initialized with the existing LOB locator.
     --
-    -- %usage The object gets initialized with the supplied LOB locator (reference). There's no deep copying
-    -- of I_VALUE contents involved, which means that all DBMS_LOB operations on the original locator will get
-    -- (somehow) reflected in this object's internal LOB locator and vice versa. Please be aware that
-    -- the buffered writes implies that intertwining of writes/appends to the LOB will most probably result
-    -- in different actual order of appended/written values than the order of the appendings in the code.
-    -- Due to this, use either the phr_nclob.append methods or the dbms_lob.writeAppend/dbms_lob.append
-    -- procedures but, ideally, not both over the same LOB locator.
+    -- %usage There's no deep copying of I_VALUE contents performed by this method itself. Please be aware, however,
+    -- that Oracle copies a temporary LOB when it is assigned to an object attribute, so the appends/writes made
+    -- through this object are not reflected in the original temporary LOB and vice versa. Use {%link get_value}
+    -- to get the up-to-date LOB. Also be aware that the buffered writes imply that intertwining of writes/appends
+    -- to the LOB will most probably result in a different actual order of appended/written values than the order
+    -- of the appendings in the code. Due to this, use either the phr_nclob.append methods or the
+    -- dbms_lob.writeAppend/dbms_lob.append procedures but, ideally, not both over the same LOB locator.
+    -- Appending to an instance with a NULL locator raises ORA-06502.
     static function use_lob
         ( i_value                       in nclob default null
         , i_buffered_writes             in boolean default true )
         return phr_nclob,
 
-    -- Overload of {%link init_tmp_lob;13} with {%link phr_utl_boolean "SQL-boolean"} data type input flags.
+    -- Overload of {%link use_lob;1} with {%link phr_utl_boolean "SQL-boolean"} data type input flags.
     static function use_lob
         ( i_value                       in nclob default null
         , i_buffered_writes             in varchar2 )
         return phr_nclob,
 
-    -- (Internal) Destroy/free the internal temporary NCLOB.
+    -- (Internal) Destroy/free the internal temporary NCLOB, together with any pending appends
+    -- in the primary buffer, and forget its caching and duration flags.
     member procedure tmp_dispose,
 
-    -- (Internal) Reinitialize the internal temporary NCLOB with the previous operational
-    -- flags of write buffering, LOB caching and LOB duration.
+    -- (Internal) Reinitialize the internal temporary NCLOB (emptying it) with the previous operational
+    -- flags of LOB caching and LOB duration.
+    --
+    -- %raises ORA-20902 (phr_utl_exc.CE_Invalid_Data_Type) if the contained LOB is not a temporary LOB created by this
+    -- object, e.g., after {%link use_lob} or {%link tmp_dispose}.
     member procedure tmp_reinitialize,
 
-    -- (Internal) Initialze the internal temporary NCLOB with the supplied flags
-    -- of LOB caching and LOB duration.
+    -- (Internal) Initialize the internal temporary NCLOB (disposing of the previous one, if any)
+    -- with the supplied flags of LOB caching and LOB duration.
+    --
+    -- %param i_cache The value passed to the CACHE parameter of the underlying DBMS_LOB.CREATETEMPORARY() call.
+    -- %param i_duration The value passed to the DURATION parameter of the underlying DBMS_LOB.CREATETEMPORARY() call.
+    -- NULL means DBMS_LOB.CALL.
     member procedure tmp_initialize
         ( i_cache                       in boolean
         , i_duration                    in pls_integer default null ), -- dbms_lob.call will be used by default
 
-    -- (Internal) Flush primary buffer, if any buffering is in effect.
+    -- (Internal) Flush the primary buffer to the contained NCLOB (or to the secondary buffer
+    -- when tripple buffering is in effect), if any buffering is in effect.
     member procedure aux_fsync_primary_buffer$,
 
-    -- (Internal) Flush secondary buffer, if tripple buffering is in effect.
+    -- (Internal) Flush the secondary buffer to the contained NCLOB, if tripple buffering is in effect.
     member procedure aux_fsync_secondary_buffer$,
 
     -- In case of internal write buffering being in effect, this method appends (flushes) the internal
@@ -301,25 +323,31 @@ object
     -- (in the internal buffers) get really written to the contained NCLOB structure.
     member procedure fsync,
 
-    -- Execute an fsync and return SELF.
+    -- Execute an fsync on a copy of this instance and return the copy.
+    -- %return A phr_nclob instance with the pending appends flushed. The original instance is not affected.
     -- %usage Useful for method chaining. Very useful in SQL context.
     member function fsync
         return phr_nclob,
 
     -- Length of the contained NCLOB.
     -- %return dbms_lob.length of the contained NCLOB with the length of the pending appends included.
+    -- Zero if the contained LOB locator is NULL.
     member function length return integer,
 
     -- Is the contained LOB data of zero length, i.e., is the LOB empty (though not necessarily NULL)?
+    -- %return true also for a NULL LOB locator, as {%link length} is zero then.
     member function is_empty return boolean,
 
     -- Call the {%link dbms_lob.trim} (if necessary) on the contained NCLOB.
-    -- %param i_length The target length the contained NCLOB.
-    -- %usage As oppposed to the dbms_lob.trim, this takes care of any pending appends (internal write buffering) as well.
+    -- %param i_length The target length of the contained NCLOB. Nothing happens when
+    -- I_LENGTH is greater than or equal to the current length, including the pending appends.
+    -- %raises ORA-21560 for a negative I_LENGTH.
+    -- %usage As opposed to the dbms_lob.trim, this takes care of any pending appends (internal write buffering) as well.
     member procedure trim
         ( i_length                      in integer default 0 ),
 
-    -- Call the {%link trim;1} method and return SELF.
+    -- Call the {%link trim;1} method on a copy of this instance and return the copy.
+    -- %return A phr_nclob instance trimmed to I_LENGTH. The original instance is not affected.
     -- %usage Useful for method chaining. Very useful in SQL context.
     member function trim
         ( i_length                      in integer default 0 )
@@ -327,12 +355,20 @@ object
 
     -- The value of the contained NCLOB.
     -- %return The actual value of the contained NCLOB with any pending appends included.
-    -- The returned value is the actual LOB locator, not a deep copy.
+    -- NULL if the contained LOB locator is NULL. With write buffering in effect, the returned value is
+    -- a flushed copy of the contained LOB; the contained LOB and its pending appends are left as they were.
+    -- Without write buffering, it is the contained LOB locator itself.
     member function get_value
         return nclob,
 
     -- Deep copy of the contained NCLOB to another NCLOB.
-    -- %usage As oppposed to the dbms_lob.copy, this takes care of any pending appends (internal write buffering) as well.
+    --
+    -- %param io_dest The destination NCLOB. It is first trimmed to I_DEST_OFFSET + length - 1,
+    -- so it has to be at least that long (otherwise ORA-22926 is raised) and whatever followed the copied portion is lost.
+    -- %param i_dest_offset Offset (1-based) within I_DEST the contents are copied to.
+    -- %usage Nothing happens, and I_DEST is left untouched, when the contained NCLOB is NULL or empty.
+    -- A NULL I_DEST raises ORA-06502 otherwise.
+    -- As opposed to the dbms_lob.copy, this takes care of any pending appends (internal write buffering) as well.
     member procedure copy_to
         ( io_dest                       in out nocopy nclob
         , i_dest_offset                 in integer default 1 ),
@@ -340,7 +376,8 @@ object
     -- Is the contained NCLOB a temporary LOB or a persistent LOB?
     -- %return PL/SQL boolean
     -- {*} true for persistent LOB locators,
-    -- {*} false for temporary LOB locators.
+    -- {*} false for temporary LOB locators,
+    -- {*} NULL for a NULL LOB locator.
     member function is_persistent return boolean,
 
     -- Wrapper over {%link is_persistent} with {%link phr_utl_boolean "SQL-boolean"} data type return values.
@@ -350,7 +387,8 @@ object
     -- Is the contained NCLOB a securefile LOB?
     -- %return PL/SQL boolean
     -- {*} true for SecureFile LOB locators,
-    -- {*} false for BasicFile (or temporary?) LOB locators.
+    -- {*} false for BasicFile and temporary LOB locators,
+    -- {*} NULL for a NULL LOB locator.
     member function is_secure_file return boolean,
 
     -- Wrapper over {%link is_secure_file} with {%link phr_utl_boolean "SQL-boolean"} data type return values.
@@ -365,9 +403,9 @@ object
     -- Append method writes/appends (arbitrary number of times) a nvarchar2 value to the
     -- contained NCLOB, possibly not immediately if the write buffering is in effect.
     --
-    -- %param i_value The nvarchar2 value to be appended.
-    -- %param i_repeat The number of times the I_VALUE is to be appended.
-    -- %param i_delimiter The ${smallTypeScaler} delimiter to be used when I_REPEAT is greater than 1.
+    -- %param i_value The nvarchar2 value to be appended. NULL is ignored.
+    -- %param i_repeat The number of times the I_VALUE is to be appended. Nothing is appended for values below 1.
+    -- %param i_delimiter The nvarchar2 delimiter to be inserted between the repetitions when I_REPEAT is greater than 1.
     member procedure append
         ( i_value                       in nvarchar2
         , i_repeat                      in simple_integer default 1
@@ -376,7 +414,7 @@ object
     -- Append method writes/appends (arbitrary number of times) a NCLOB value to the
     -- contained NCLOB, possibly not immediately if the write buffering is in effect.
     --
-    -- %param i_value The NCLOB value to be appended.
+    -- %param i_value The NCLOB value to be appended. NULL and empty values are ignored.
     -- %param i_repeat See {%link append;1}.
     -- %param i_delimiter See {%link append;1}.
     member procedure append
@@ -388,7 +426,7 @@ object
     -- phr_nclob to the contained NCLOB, possibly not immediately if
     -- the write buffering is in effect.
     --
-    -- %param i_value The phr_nclob instance the LOB contens of are to be appended.
+    -- %param i_value The phr_nclob instance the LOB contents of are to be appended. NULL and empty instances are ignored.
     -- %param i_repeat See {%link append;1}.
     -- %param i_delimiter See {%link append;1}.
     member procedure append
@@ -411,8 +449,11 @@ object
     -- Append method writes/appends the concatenation of values from arr_nvarchar2, delimited
     -- by a nvarchar2 delimiter.
     --
-    -- %param i_values arr_nvarchar2 to be concatenated and appended.
+    -- %param i_values arr_nvarchar2 to be concatenated and appended. NULL and empty collections are ignored,
+    -- NULL elements contribute nothing but their delimiter, prefix and suffix.
     -- %param i_delimiter (Optional) nvarchar2 delimiter for concatenation of elements from I_VALUES.
+    -- %param i_value_prefix (Optional) nvarchar2 to be prepended to each element.
+    -- %param i_value_suffix (Optional) nvarchar2 to be appended to each element.
     --
     -- %usage Concatenation of, possibly delimited, nvarchar2 values into one NCLOB
     -- in a functional way, without any collection-iterating-FOR-loop + first-value-identifying-IF-branch
@@ -426,8 +467,11 @@ object
     -- Append method writes/appends the concatenation of values from arr_nclob, delimited
     -- by a nvarchar2 delimiter.
     --
-    -- %param i_values arr_nclob to be concatenated and appended.
+    -- %param i_values arr_nclob to be concatenated and appended. NULL and empty collections are ignored,
+    -- NULL elements contribute nothing but their delimiter, prefix and suffix.
     -- %param i_delimiter (Optional) nvarchar2 delimiter for concatenation of elements from I_VALUES.
+    -- %param i_value_prefix (Optional) nvarchar2 to be prepended to each element.
+    -- %param i_value_suffix (Optional) nvarchar2 to be appended to each element.
     --
     -- %usage Concatenation of, possibly delimited, NCLOB values into one NCLOB
     -- in a functional way, without any collection-iterating-FOR-loop + first-value-identifying-IF-branch
@@ -445,10 +489,12 @@ object
     -- %param i_delimiter (Optional) nvarchar2 delimiter for concatenation of elements from the ref cursor.
     -- %param i_batch_size (Technical, performance-related) Bulk-fetch buffer size.
     -- %param i_fetch_to_lobs (Technical, performance-related) Determines whether the I_VALUES cursor should be fetched to arr_nvarchar2 or to arr_nclob buffer internally.
+    -- %param i_value_prefix (Optional) nvarchar2 to be prepended to each value.
+    -- %param i_value_suffix (Optional) nvarchar2 to be appended to each value.
     --
     -- %usage Concatenation of, possibly delimited, nvarchar2/NCLOB values into one NCLOB
     -- in a functional way, without any collection-iterating-FOR-loop + first-value-identifying-IF-branch
-    -- boilerplate code.
+    -- boilerplate code. The cursor gets fully fetched and closed by this method.
     member procedure append
         ( i_values                      in sys_refcursor
         , i_delimiter                   in nvarchar2 default null
@@ -457,40 +503,40 @@ object
         , i_value_prefix                in nvarchar2 default null
         , i_value_suffix                in nvarchar2 default null ),
 
-    -- Call the {%link append;1} method for nvarchar2 and return SELF.
-    -- %usage Useful for method chaining. Very useful in SQL context.
+    -- Call the {%link append;1} method for nvarchar2 on a copy of this instance and return the copy.
+    -- %usage Useful for method chaining. Very useful in SQL context. The original instance is not affected.
     member function append
         ( i_value                       in nvarchar2
         , i_repeat                      in simple_integer default 1
         , i_delimiter                   in nvarchar2 default null )
         return phr_nclob,
 
-    -- Call the {%link append;2} method for NCLOB and return SELF.
-    -- %usage Useful for method chaining. Very useful in SQL context.
+    -- Call the {%link append;2} method for NCLOB on a copy of this instance and return the copy.
+    -- %usage Useful for method chaining. Very useful in SQL context. The original instance is not affected.
     member function append
         ( i_value                       in nclob
         , i_repeat                      in simple_integer default 1
         , i_delimiter                   in nvarchar2 default null )
         return phr_nclob,
 
-    -- Call the {%link append;3} method for phr_nclob and return SELF.
-    -- %usage Useful for method chaining. Very useful in SQL context.
+    -- Call the {%link append;3} method for phr_nclob on a copy of this instance and return the copy.
+    -- %usage Useful for method chaining. Very useful in SQL context. The original instance is not affected.
     member function append
         ( i_value                       in phr_nclob
         , i_repeat                      in simple_integer default 1
         , i_delimiter                   in nvarchar2 default null )
         return phr_nclob,
 
-    -- Call the {%link append;2} method for BFILE and return SELF.
-    -- %usage Useful for method chaining. Very useful in SQL context.
+    -- Call the {%link append;4} method for BFILE on a copy of this instance and return the copy.
+    -- %usage Useful for method chaining. Very useful in SQL context. The original instance is not affected.
     member function append
         ( i_value                       in bfile
         , i_repeat                      in simple_integer default 1
         , i_delimiter                   in nvarchar2 default null )
         return phr_nclob,
 
-    -- Call the {%link append;4} method for arr_nvarchar2 and return SELF.
-    -- %usage Useful for method chaining. Very useful in SQL context.
+    -- Call the {%link append;5} method for arr_nvarchar2 on a copy of this instance and return the copy.
+    -- %usage Useful for method chaining. Very useful in SQL context. The original instance is not affected.
     member function append
         ( i_values                      in arr_nvarchar2
         , i_delimiter                   in nvarchar2 default null
@@ -498,9 +544,9 @@ object
         , i_value_suffix                in nvarchar2 default null )
         return phr_nclob,
 
-    -- Call the {%link append;5} method for arr_nclob and return SELF.
+    -- Call the {%link append;6} method for arr_nclob on a copy of this instance and return the copy.
     -- %usage Useful for method chaining. Not that useful in SQL context, as Oracle (as of version 12.2)
-    -- does no support the COLLECT() aggregator to a collection of NCLOBs.
+    -- does no support the COLLECT() aggregator to a collection of NCLOBs. The original instance is not affected.
     member function append
         ( i_values                      in arr_nclob
         , i_delimiter                   in nvarchar2 default null
@@ -508,8 +554,9 @@ object
         , i_value_suffix                in nvarchar2 default null )
         return phr_nclob,
 
-    -- Call the {%link append;6} method with ref cursor and return SELF.
+    -- Call the {%link append;7} method with ref cursor on a copy of this instance and return the copy.
     -- %usage Useful for method chaining. Unusable in SQL context due to PL/SQL boolean parameters in use. (See the next overload.)
+    -- The original instance is not affected.
     member function append
         ( i_values                      in sys_refcursor
         , i_delimiter                   in nvarchar2 default null
@@ -519,8 +566,8 @@ object
         , i_value_suffix                in nvarchar2 default null )
         return phr_nclob,
 
-    -- Call the {%link append;7} method with ref cursor and return SELF.
-    -- %usage Useful for method chaining. Extremely useful in SQL context!
+    -- Overload of {%link append;7} with {%link phr_utl_boolean "SQL-boolean"} data type input flags.
+    -- %usage Useful for method chaining. Extremely useful in SQL context! The original instance is not affected.
     member function append
         ( i_values                      in sys_refcursor
         , i_delimiter                   in nvarchar2 default null
@@ -533,15 +580,17 @@ object
     -- AppendLn method writes/appends a nvarchar2 value to the contained NCLOB,
     -- followed by the (custom) EOLN sequence, possibly not immediately if the write buffering is in effect.
     --
-    -- %param i_value The nvarchar2 value to be appended.
+    -- %param i_value The nvarchar2 value to be appended. NULL (default) appends the EOLN sequence only.
+    -- %usage When the EOLN is NULL (see {%link use_eoln}), nothing but I_VALUE is appended.
     member procedure appendln
         ( i_value                       in nvarchar2 default null ),
 
     -- AppendLn method writes/appends a nvarchar2 value to the contained NCLOB,
     -- followed by the (custom) EOLN sequence, possibly not immediately if the write buffering is in effect,
-    -- returning SELF as the result.
+    -- on a copy of this instance, returning the copy as the result.
     --
-    -- %param i_value The nvarchar2 value to be appended.
+    -- %param i_value See {%link appendln;1}.
+    -- %usage Useful for method chaining. Very useful in SQL context. The original instance is not affected.
     member function appendln
         ( i_value                       in nvarchar2 default null )
         return phr_nclob,
@@ -550,22 +599,22 @@ object
     -- contained within the supplied NCLOB.
     --
     -- %param i_lob_2 An instance of the phr_nclob the contained NCLOB is to be compared to.
-    -- %param i_two_nulls_are_equal Determines if two NULL LOB locators are considered to be equal.
-    -- {*} true Two NULLs are considered as equal.
-    -- {*} false (default) Two NULLs are considered as distinct.
     -- %param i_compare_lengths_first
     -- {*} true (default) Possibly speed up the LOBs comparison by comparing the LOBs lengths first.
     -- {*} false Do not use length-based comparison first, do contents-based comparison immediately.
     -- %return
     -- {*} 0 if the LOBs are, contents-wise, the same
-    -- {*} -0.1 if the length of the contained LOB is less than the length of the supplied LOB,
-    -- {*} +0.1 if the length of the contained LOB is greater than the length of the supplied LOB,
-    -- {*} integer (nonnegative) X when there's a difference on the contents offset X (1-based) between
-    -- the the contained LOB and the supplied LOB.
+    -- {*} -0.1 if I_COMPARE_LENGTHS_FIRST is set and the length of the contained LOB is less than the length of the supplied LOB,
+    -- {*} +0.1 if I_COMPARE_LENGTHS_FIRST is set and the length of the contained LOB is greater than the length of the supplied LOB,
+    -- {*} -1 or +1 (as returned by dbms_lob.compare) if the contents differ and the contained LOB is,
+    -- at the first differing element, less or greater than the supplied LOB, respectively,
+    -- {*} NULL if I_LOB_2 is NULL, or if dbms_lob.compare returns NULL (e.g., when at least one of the LOB locators
+    -- is NULL and the lengths comparison is not decisive).
     --
     -- %usage Equivalent to dbms_lob.compare with some enhancements. When i_compare_lengths_first is
     -- set, then if the lengths are distinct, the LOBs are considered distinct immediately; if the
-    -- lengths match, then a regular, contents-based comparison takes place.
+    -- lengths match, then a regular, contents-based comparison takes place. A NULL LOB locator is
+    -- considered to be of zero length, and the pending appends are taken into account.
     member function compare
         ( i_lob_2                       in phr_nclob
         , i_compare_lengths_first       in boolean default true )
@@ -573,6 +622,7 @@ object
         parallel_enable,
 
     -- Overload of {%link compare;1} with {%link phr_utl_boolean "SQL-boolean"} data type input flags.
+    -- %param i_compare_lengths_first Any value but a "true" flag (e.g., NULL) means false.
     member function compare
         ( i_lob_2                       in phr_nclob
         , i_compare_lengths_first       in varchar2 )
@@ -582,8 +632,9 @@ object
     -- Compares the contents of the contained NCLOB with the contents of the supplied NCLOB.
     --
     -- %param i_lob_2 A NCLOB value the contained NCLOB is to be compared to.
-    -- %param i_two_nulls_are_equal (See {%link compare;1}.)
+    -- A NULL value is compared as a NULL LOB locator, i.e., as a LOB of zero length.
     -- %param i_compare_lengths_first (See {%link compare;1}.)
+    -- %return (See {%link compare;1}.)
     --
     -- %usage Overload of {%link compare;1} operating on a simple (non-object-encapsulated) NCLOB input value.
     member function compare
@@ -601,7 +652,8 @@ object
 
     -- Class' ORDER function for direct comparisons of LOB contents in SQL context.
     -- %param i_lob_2 (See {%link compare;1}.)
-    -- %return (See {%link compare;1}.)
+    -- %return (See {%link compare;1}.) The comparison is done with I_COMPARE_LENGTHS_FIRST set,
+    -- i.e., shorter LOBs sort before longer ones.
     order member function order$
         ( i_lob_2                       in phr_nclob )
         return number
@@ -610,10 +662,12 @@ object
     -- Get a substring of the contained NCLOB.
     --
     -- %param i_from Offset (1-based) of the contained NCLOB from which to get the substring.
-    -- %param i_length Length of the desired substring. NULL, if you need the substring up to the NCLOB's contents.
-    -- %return The part of the contained NCLOB from offset I_FROM in the length of I_LENGHT.
+    -- %param i_length Length of the desired substring. NULL, if you need the substring up to the NCLOB's end.
+    -- %return The part of the contained NCLOB from offset I_FROM in the length of I_LENGTH
+    -- (or shorter, if the end of the NCLOB is reached first). NULL if I_FROM or I_LENGTH is not positive,
+    -- if I_FROM is beyond the end of the NCLOB, or if the contained LOB locator is NULL.
     --
-    -- %usage As oppposed to the dbms_lob.substr, this takes care of any pending appends (internal write buffering) as well.
+    -- %usage As opposed to the dbms_lob.substr, this takes care of any pending appends (internal write buffering) as well.
     member function subStr
         ( i_from                        in integer
         , i_length                      in pls_integer default null )
@@ -623,11 +677,12 @@ object
     -- Find the position (offset) of a I_NEEDLE within the contained NCLOB haystack.
     --
     -- %param i_needle Substring ("needle") to find.
-    -- %param i_offset Start searching for the needle at this haystack offset.
+    -- %param i_offset Start searching for the needle at this haystack offset (1-based).
     -- %param i_occurrence Search for I_OCCURRENCE-th occurrence of the needle within the haystack.
-    -- %return Offset within the haystack of the found needle or 0 (zero) if not found.
+    -- %return Offset within the haystack of the found needle or 0 (zero) if not found. NULL if I_NEEDLE is NULL,
+    -- if I_OFFSET or I_OCCURRENCE is not positive, or if the contained LOB locator is NULL.
     --
-    -- %usage As oppposed to the dbms_lob.instr, this takes care of any pending appends (internal write buffering) as well.
+    -- %usage As opposed to the dbms_lob.instr, this takes care of any pending appends (internal write buffering) as well.
     member function inStr
         ( i_needle                      in nvarchar2
         , i_offset                      in integer default 1
@@ -638,11 +693,12 @@ object
     -- Configure this phr_nclob instance with a character set for appends/writes
     -- of raw values with charset autoconversion in effect.
     -- %param i_charset The Oracle character set string to be used for subsequent raw autoconversions.
+    -- At most 32 characters long; NULL resets the setting.
     member procedure set_raw_conversion_charset
         ( i_charset                     in varchar2 ),
 
-    -- Call {%link set_raw_conversion_charset;1} and return SELF.
-    -- %usage Useful for method chaining. Very useful in SQL context.
+    -- Call {%link set_raw_conversion_charset;1} on a copy of this instance and return the copy.
+    -- %usage Useful for method chaining. Very useful in SQL context. The original instance is not affected.
     member function with_raw_conversion_charset
         ( i_charset                     in varchar2 )
         return phr_nclob,
@@ -650,9 +706,11 @@ object
     -- Append a raw (auto-converted to nvarchar2 via preset conversion
     -- charset) value to the contained NCLOB.
     --
-    -- %param i_value A raw value to be converted via preset conversin charset and appended to the contained NCLOB.
+    -- %param i_value A raw value to be converted via preset conversion charset and appended to the contained NCLOB.
     -- %param i_repeat (See {%link append;1}.)
-    -- %param i_delimiter (See {%link append;1}.)
+    -- %param i_delimiter (See {%link append;1}.) A raw value, converted the same way as I_VALUE.
+    -- %raises ORA-20901 (phr_utl_exc.CE_Invalid_Argument) if no conversion charset has been set
+    -- (see {%link set_raw_conversion_charset}), even when I_VALUE is NULL.
     --
     -- %usage This allows a developer to reduce some amount of boilerplate code when operating over
     -- raw values being appended to NCLOBs with a specific
@@ -662,8 +720,8 @@ object
         , i_repeat                      in simple_integer default 1
         , i_delimiter                   in raw default null ),
 
-    -- Call {%link append_raw;1} and return SELF.
-    -- %usage Useful for method chaining. Very useful in SQL context.
+    -- Call {%link append_raw;1} on a copy of this instance and return the copy.
+    -- %usage Useful for method chaining. Very useful in SQL context. The original instance is not affected.
     member function append_raw
         ( i_value                       in raw
         , i_repeat                      in simple_integer default 1
@@ -676,12 +734,17 @@ object
     --
     -- %param i_offset Starting (1-based) offset of the NCLOB portion to be deleted.
     -- %param i_amount Number of NCLOB's to be deleted from the contained NCLOB at offset I_OFFSET.
+    -- %raises ORA-20901 (phr_utl_exc.CE_Invalid_Argument) for a NULL or negative I_OFFSET, or a NULL or negative I_AMOUNT.
+    -- ORA-21560 for a zero I_OFFSET (offsets are 1-based) combined with a non-zero I_AMOUNT.
+    --
+    -- %usage Zero I_AMOUNT does nothing, whatever the I_OFFSET is. I_AMOUNT reaching beyond the end of
+    -- the NCLOB deletes everything from I_OFFSET onwards; I_OFFSET beyond the end deletes nothing.
     member procedure fragment_delete
         ( i_offset                      in integer
         , i_amount                      in integer ),
 
-    -- Call {%link fragment_delete};1} and return SELF.
-    -- %usage Useful for method chaining. Very useful in SQL context.
+    -- Call {%link fragment_delete;1} on a copy of this instance and return the copy.
+    -- %usage Useful for method chaining. Very useful in SQL context. The original instance is not affected.
     member function fragment_delete
         ( i_offset                      in integer
         , i_amount                      in integer )
@@ -693,12 +756,14 @@ object
     --
     -- %param i_from Starting (1-based) offset of the NCLOB portion to be deleted.
     -- %param i_to Ending (1-based, inclusive) offset of the NCLOB portion to be deleted.
+    -- %raises ORA-20901 (phr_utl_exc.CE_Invalid_Argument) for a NULL I_FROM or I_TO, or for I_TO being less than I_FROM - 1.
+    -- See {%link fragment_delete;1} for the rest.
     member procedure fragment_delete_between
         ( i_from                        in integer
         , i_to                          in integer ),
 
-    -- Call {%link fragment_delete_between};1} and return SELF.
-    -- %usage Useful for method chaining. Very useful in SQL context.
+    -- Call {%link fragment_delete_between;1} on a copy of this instance and return the copy.
+    -- %usage Useful for method chaining. Very useful in SQL context. The original instance is not affected.
     member function fragment_delete_between
         ( i_from                        in integer
         , i_to                          in integer )
@@ -711,12 +776,21 @@ object
     --
     -- %param i_from Starting (inclusive) needle of the NCLOB portion to be deleted.
     -- %param i_to Ending (inclusive) needle of the NCLOB portion to be deleted.
+    -- NULL (default) means the portion reaches up to the end of the NCLOB.
     -- %param i_max_iterations Repeat the deletion this number of times. (default: 1)
+    -- Each next search for the I_FROM needle starts right after the previously deleted portion in the original
+    -- NCLOB. Values below 1 delete nothing.
+    -- %raises ORA-20901 (phr_utl_exc.CE_Invalid_Argument) for a NULL I_FROM.
+    --
+    -- %usage The NCLOB stays untouched if the I_FROM needle is not found. When the I_TO needle is not found
+    -- after an occurrence of I_FROM, that occurrence is not deleted and the iterations end.
     member procedure fragment_delete_from_to
         ( i_from                        in nvarchar2
         , i_to                          in nvarchar2 default null
         , i_max_iterations              in simple_integer default 1 ),
 
+    -- Call {%link fragment_delete_from_to;1} on a copy of this instance and return the copy.
+    -- %usage Useful for method chaining. Very useful in SQL context. The original instance is not affected.
     member function fragment_delete_from_to
         ( i_from                        in nvarchar2
         , i_to                          in nvarchar2 default null
