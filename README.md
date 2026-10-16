@@ -45,6 +45,7 @@ Method-level documentation (parameters, usage notes, raised exceptions, NULL han
 | [src/phr_anylob.typ.awk](src/phr_anylob.typ.awk) | Per-LOB-class placeholder definitions (CLOB / NCLOB / BLOB) |
 | [src/phr_anylob.typ.sh](src/phr_anylob.typ.sh) | Generator of the three concrete types |
 | [src/generated/](src/generated) | Generated `phr_clob.typ`, `phr_nclob.typ`, `phr_blob.typ` (what you actually install) |
+| [install.sql](install.sql) | Full installation script: cleanup, prerequisites, types, native compilation |
 | [src/install/](src/install) | Installation helpers: prerequisites, native compilation, cleanup |
 | [tests/templates/](tests/templates) | Test templates, one per method or method family |
 | [tests/phr_anylob.tst.awk](tests/phr_anylob.tst.awk), [tests/phr_anylob.tst.sh](tests/phr_anylob.tst.sh) | Test generator |
@@ -60,15 +61,21 @@ Method-level documentation (parameters, usage notes, raised exceptions, NULL han
 
 ## Installation
 
-1. Run [src/install/prerequisites.sql](src/install/prerequisites.sql) to create the collection types (`arr_clob`, `arr_nclob`, `arr_blob`, `arr_varchar2`, `arr_nvarchar2`, `arr_raw`).
-2. Make sure `phr_utl_boolean` and `phr_utl_exc` are installed.
-3. Run the generated type scripts, each one followed by `/` if your client needs it:
-   - [src/generated/phr_clob.typ](src/generated/phr_clob.typ)
-   - [src/generated/phr_nclob.typ](src/generated/phr_nclob.typ)
-   - [src/generated/phr_blob.typ](src/generated/phr_blob.typ)
-4. Optionally run [src/install/_native compile.sql](src/install/_native%20compile.sql) to recompile the types natively with optimization level 3.
+Make sure `phr_utl_boolean` and `phr_utl_exc` are installed, then run [install.sql](install.sql) from the repository root in SQL*Plus or SQLcl:
 
-To uninstall, run [src/install/_cleanup.sql](src/install/_cleanup.sql).
+```
+sqlplus user/password@db @install.sql
+```
+
+The script stops on the first error and:
+
+1. Drops the `phr_clob`, `phr_nclob`, `phr_blob` types and the `arr_*` collection types if they exist. Dependent objects in the schema get invalidated.
+2. Runs [src/install/prerequisites.sql](src/install/prerequisites.sql) to create the collection types (`arr_clob`, `arr_nclob`, `arr_blob`, `arr_varchar2`, `arr_nvarchar2`, `arr_raw`).
+3. Deploys the generated types [phr_clob](src/generated/phr_clob.typ), [phr_nclob](src/generated/phr_nclob.typ) and [phr_blob](src/generated/phr_blob.typ).
+4. Runs [src/install/native-compile.sql](src/install/native-compile.sql) to recompile the types natively with optimization level 3.
+5. Fails if any of the three types is not `VALID` afterwards.
+
+To uninstall only the `phr_*` types, run [src/install/cleanup.sql](src/install/cleanup.sql).
 
 ## Regenerating the types and tests
 
