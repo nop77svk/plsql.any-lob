@@ -5,27 +5,28 @@ whenever sqlerror exit failure rollback
 prompt Cleaning up existing objects
 
 declare
-    e_Type_Not_Exists               exception;
-    pragma exception_init(e_Type_Not_Exists, -4043);
+    e_Object_Not_Exists             exception;
+    pragma exception_init(e_Object_Not_Exists, -4043);
 
-    c_types_to_drop                 constant sys.odcivarchar2list := sys.odcivarchar2list
-        ( 'phr_clob'
-        , 'phr_nclob'
-        , 'phr_blob'
-        , 'arr_clob'
-        , 'arr_nclob'
-        , 'arr_blob'
-        , 'arr_varchar2'
-        , 'arr_nvarchar2'
-        , 'arr_raw' );
+    c_drop_statements               constant sys.odcivarchar2list := sys.odcivarchar2list
+        ( 'drop type phr_clob force'
+        , 'drop type phr_nclob force'
+        , 'drop type phr_blob force'
+        , 'drop package phr_anylob_exc'
+        , 'drop type arr_clob force'
+        , 'drop type arr_nclob force'
+        , 'drop type arr_blob force'
+        , 'drop type arr_varchar2 force'
+        , 'drop type arr_nvarchar2 force'
+        , 'drop type arr_raw force' );
 begin
-    for i in 1 .. c_types_to_drop.count
+    for i in 1 .. c_drop_statements.count
     loop
         begin
-            execute immediate 'drop type ' || c_types_to_drop(i) || ' force';
-            dbms_output.put_line('Dropped type ' || c_types_to_drop(i));
+            execute immediate c_drop_statements(i);
+            dbms_output.put_line(c_drop_statements(i));
         exception
-            when e_Type_Not_Exists then
+            when e_Object_Not_Exists then
                 null;
         end;
     end loop;
@@ -34,6 +35,7 @@ end;
 
 prompt Deploying prerequisites
 @@src/install/prerequisites.sql
+@@src/phr_anylob_exc.pks
 
 prompt Deploying phr_clob
 @@src/generated/phr_clob.typ
@@ -56,16 +58,16 @@ begin
     select count(*)
     into l_problem_count
     from user_objects UO
-    where UO.object_name in ('PHR_CLOB', 'PHR_NCLOB', 'PHR_BLOB')
-        and UO.object_type in ('TYPE', 'TYPE BODY')
+    where UO.object_name in ('PHR_CLOB', 'PHR_NCLOB', 'PHR_BLOB', 'PHR_ANYLOB_EXC')
+        and UO.object_type in ('TYPE', 'TYPE BODY', 'PACKAGE')
         and UO.status != 'VALID';
 
     if l_problem_count > 0 then
         raise_application_error
             ( c_installation_failed_code
-            , l_problem_count || ' phr_clob/phr_nclob/phr_blob type unit(s) not VALID, check user_errors (are phr_utl_boolean and phr_utl_exc installed?)' );
+            , l_problem_count || ' phr_anylob_exc/phr_clob/phr_nclob/phr_blob unit(s) not VALID, check user_errors (is utl_ident installed?)' );
     end if;
 
-    dbms_output.put_line('phr_clob, phr_nclob and phr_blob installed and VALID');
+    dbms_output.put_line('phr_anylob_exc, phr_clob, phr_nclob and phr_blob installed and VALID');
 end;
 /
