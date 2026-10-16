@@ -163,7 +163,7 @@ declare
 
     procedure test_fragment_delete_invalid_arguments
     is
-        c_invalid_argument              constant integer := phr_utl_exc.CE_Invalid_Argument;
+        c_invalid_argument              constant integer := phr_anylob_exc.CE_Invalid_Argument;
     begin
         -- act + assert
         report('fragment_delete NULL offset', to_char(c_invalid_argument), to_char(error_code_of_fragment_delete(null, 1)));
