@@ -14,5 +14,3 @@
     c_big_length                    constant pls_integer := c_big_chunk_count * c_chunk_length;
     c_threshold                     constant pls_integer := ${smallLargeSwitchThreshold};
     c_charset                       constant varchar2(32) := '${rawConversionCharset}';
-    c_bfile_directory               constant varchar2(128) := '${bfileDirectory}';
-    c_bfile_name                    constant varchar2(128) := 'phr_${largeTypeScalar}_test.bin';

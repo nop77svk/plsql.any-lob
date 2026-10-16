@@ -1,5 +1,5 @@
 PL/SQL Developer Test script 3.0
-345
+343
 declare
     c_assertion_failed_error        constant pls_integer := -20000;
     c_no_error                      constant pls_integer := 0;
@@ -17,8 +17,6 @@ declare
     c_big_length                    constant pls_integer := c_big_chunk_count * c_chunk_length;
     c_threshold                     constant pls_integer := 32767;
     c_charset                       constant varchar2(32) := 'AL32UTF8';
-    c_bfile_directory               constant varchar2(128) := 'DIR_ANYTHING';
-    c_bfile_name                    constant varchar2(128) := 'phr_clob_test.bin';
     l_lob                           phr_clob;
     l_source                        phr_clob;
     l_null_small                    varchar2(1);

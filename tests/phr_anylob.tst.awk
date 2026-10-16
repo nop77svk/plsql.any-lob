@@ -83,7 +83,6 @@ BEGIN {
 
 	modus = tolower(i_modus_operandi);
 
-	vars["bfileDirectory"] = i_bfile_directory;
 	vars["rawConversionCharset"] = "AL32UTF8";
 
 	if (modus == "clob")
