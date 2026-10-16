@@ -70,18 +70,21 @@ object
         ( i_eoln                        in ${smallTypeScalar} ),
 
     -- Builder returning a copy of this phr_${largeTypeScalar} instance with buffering switched off.
-    -- %usage Calls {%link use_nonbuffered_writes} on the copy, so the original instance is not affected.
+    -- %usage Calls {%link use_nonbuffered_writes} on a copy of this instance, so the buffering of the original instance
+    -- is not affected. The persistent LOB inside stays shared (see {%link use_lob;1}).
     member function nonbuffered
         return phr_${largeTypeScalar},
 
     -- Builder returning a copy of this phr_${largeTypeScalar} instance with double buffering switched on.
-    -- %usage Calls {%link use_double_buffering} on the copy, so the original instance is not affected.
+    -- %usage Calls {%link use_double_buffering} on a copy of this instance, so the buffering of the original instance
+    -- is not affected. The persistent LOB inside stays shared (see {%link use_lob;1}).
     member function double_buffered
         return phr_${largeTypeScalar},
 
     -- Builder returning a copy of this phr_${largeTypeScalar} instance with tripple buffering switched on.
     -- %param i_buffer_size See {%link use_tripple_buffering}.
-    -- %usage Calls {%link use_tripple_buffering} on the copy, so the original instance is not affected.
+    -- %usage Calls {%link use_tripple_buffering} on a copy of this instance, so the buffering of the original instance
+    -- is not affected. The persistent LOB inside stays shared (see {%link use_lob;1}).
     member function tripple_buffered
         ( i_buffer_size                 in simple_integer default 1048576 )
         return phr_${largeTypeScalar},
@@ -270,13 +273,17 @@ object
     -- %param i_buffered_writes See the {%link new_tmp_lob;1} factory.
     -- %return Instance of the phr_${largeTypeScalar} class initialized with the existing LOB locator.
     --
-    -- %usage There's no deep copying of I_VALUE contents performed by this method itself. Please be aware, however,
-    -- that Oracle copies a temporary LOB when it is assigned to an object attribute, so the appends/writes made
-    -- through this object are not reflected in the original temporary LOB and vice versa. Use {%link get_value}
-    -- to get the up-to-date LOB. Also be aware that the buffered writes imply that intertwining of writes/appends
-    -- to the LOB will most probably result in a different actual order of appended/written values than the order
-    -- of the appendings in the code. Due to this, use either the phr_${largeTypeScalar}.append methods or the
-    -- dbms_lob.writeAppend/dbms_lob.append procedures but, ideally, not both over the same LOB locator.
+    -- %usage There's no deep copying of I_VALUE contents performed by this method itself. A persistent LOB locator
+    -- is a pointer to the stored LOB, so all the writes/appends made through this object (once flushed from the
+    -- internal buffers) are applied to the stored LOB, and all the DBMS_LOB operations made over the original locator
+    -- are applied to the very same stored LOB. Mind the LOB locator read consistency, though: a locator sees the changes
+    -- made through another locator of the same LOB only after it gets re-read. A temporary LOB, on the other hand,
+    -- gets copied by Oracle whenever assigned, so this object works over its own copy of the temporary LOB;
+    -- use {%link get_value} to get hold of its up-to-date contents. Also be aware that the buffered writes imply
+    -- that intertwining of writes/appends to the LOB will most probably result in a different actual order of
+    -- appended/written values than the order of the appendings in the code. Due to this, use either the
+    -- phr_${largeTypeScalar}.append methods or the dbms_lob.writeAppend/dbms_lob.append procedures but, ideally,
+    -- not both over the same LOB locator.
     -- Appending to an instance with a NULL locator raises ORA-06502.
     static function use_lob
         ( i_value                       in ${largeTypeScalar} default null
@@ -324,7 +331,9 @@ object
     member procedure fsync,
 
     -- Execute an fsync on a copy of this instance and return the copy.
-    -- %return A phr_${largeTypeScalar} instance with the pending appends flushed. The original instance is not affected.
+    -- %return A phr_${largeTypeScalar} instance with the pending appends flushed into the LOB. The instance gets copied,
+    -- but a persistent LOB inside it stays shared (see {%link use_lob;1}), while the pending appends of the original
+    -- instance remain in its own buffers.
     -- %usage Useful for method chaining. Very useful in SQL context.
     member function fsync
         return phr_${largeTypeScalar},
@@ -347,17 +356,17 @@ object
         ( i_length                      in integer default 0 ),
 
     -- Call the {%link trim;1} method on a copy of this instance and return the copy.
-    -- %return A phr_${largeTypeScalar} instance trimmed to I_LENGTH. The original instance is not affected.
+    -- %return A phr_${largeTypeScalar} instance trimmed to I_LENGTH. The instance gets copied,
+    -- but a persistent LOB inside it stays shared (see {%link use_lob;1}).
     -- %usage Useful for method chaining. Very useful in SQL context.
     member function trim
         ( i_length                      in integer default 0 )
         return phr_${largeTypeScalar},
 
     -- The value of the contained ${largeTypeScalarUpper}.
-    -- %return The actual value of the contained ${largeTypeScalarUpper} with any pending appends included.
-    -- NULL if the contained LOB locator is NULL. With write buffering in effect, the returned value is
-    -- a flushed copy of the contained LOB; the contained LOB and its pending appends are left as they were.
-    -- Without write buffering, it is the contained LOB locator itself.
+    -- %return The LOB locator of the contained ${largeTypeScalarUpper} with any pending appends included (flushed into
+    -- the LOB). NULL if the contained LOB locator is NULL. For a persistent LOB, the returned locator points to the very same
+    -- stored LOB; a temporary LOB gets copied by Oracle whenever assigned, so treat the returned value as a snapshot.
     member function get_value
         return ${largeTypeScalar},
 
@@ -504,7 +513,8 @@ object
         , i_value_suffix                in ${smallTypeScalar} default null ),
 
     -- Call the {%link append;1} method for ${smallTypeScalar} on a copy of this instance and return the copy.
-    -- %usage Useful for method chaining. Very useful in SQL context. The original instance is not affected.
+    -- %usage Useful for method chaining. Very useful in SQL context. The instance gets copied, but a persistent LOB
+    -- inside it stays shared (see {%link use_lob;1}).
     member function append
         ( i_value                       in ${smallTypeScalar}
         , i_repeat                      in simple_integer default 1
@@ -512,7 +522,8 @@ object
         return phr_${largeTypeScalar},
 
     -- Call the {%link append;2} method for ${largeTypeScalarUpper} on a copy of this instance and return the copy.
-    -- %usage Useful for method chaining. Very useful in SQL context. The original instance is not affected.
+    -- %usage Useful for method chaining. Very useful in SQL context. The instance gets copied, but a persistent LOB
+    -- inside it stays shared (see {%link use_lob;1}).
     member function append
         ( i_value                       in ${largeTypeScalar}
         , i_repeat                      in simple_integer default 1
@@ -520,7 +531,8 @@ object
         return phr_${largeTypeScalar},
 
     -- Call the {%link append;3} method for phr_${largeTypeScalar} on a copy of this instance and return the copy.
-    -- %usage Useful for method chaining. Very useful in SQL context. The original instance is not affected.
+    -- %usage Useful for method chaining. Very useful in SQL context. The instance gets copied, but a persistent LOB
+    -- inside it stays shared (see {%link use_lob;1}).
     member function append
         ( i_value                       in phr_${largeTypeScalar}
         , i_repeat                      in simple_integer default 1
@@ -528,7 +540,8 @@ object
         return phr_${largeTypeScalar},
 
     -- Call the {%link append;4} method for BFILE on a copy of this instance and return the copy.
-    -- %usage Useful for method chaining. Very useful in SQL context. The original instance is not affected.
+    -- %usage Useful for method chaining. Very useful in SQL context. The instance gets copied, but a persistent LOB
+    -- inside it stays shared (see {%link use_lob;1}).
     member function append
         ( i_value                       in bfile
         , i_repeat                      in simple_integer default 1
@@ -536,7 +549,8 @@ object
         return phr_${largeTypeScalar},
 
     -- Call the {%link append;5} method for ${smallTypeCollection} on a copy of this instance and return the copy.
-    -- %usage Useful for method chaining. Very useful in SQL context. The original instance is not affected.
+    -- %usage Useful for method chaining. Very useful in SQL context. The instance gets copied, but a persistent LOB
+    -- inside it stays shared (see {%link use_lob;1}).
     member function append
         ( i_values                      in ${smallTypeCollection}
         , i_delimiter                   in ${smallTypeScalar} default null
@@ -546,7 +560,8 @@ object
 
     -- Call the {%link append;6} method for ${largeTypeCollection} on a copy of this instance and return the copy.
     -- %usage Useful for method chaining. Not that useful in SQL context, as Oracle (as of version 12.2)
-    -- does no support the COLLECT() aggregator to a collection of ${largeTypeScalarUpper}s. The original instance is not affected.
+    -- does no support the COLLECT() aggregator to a collection of ${largeTypeScalarUpper}s. The instance gets copied,
+    -- but a persistent LOB inside it stays shared (see {%link use_lob;1}).
     member function append
         ( i_values                      in ${largeTypeCollection}
         , i_delimiter                   in ${smallTypeScalar} default null
@@ -556,7 +571,7 @@ object
 
     -- Call the {%link append;7} method with ref cursor on a copy of this instance and return the copy.
     -- %usage Useful for method chaining. Unusable in SQL context due to PL/SQL boolean parameters in use. (See the next overload.)
-    -- The original instance is not affected.
+    -- The instance gets copied, but a persistent LOB inside it stays shared (see {%link use_lob;1}).
     member function append
         ( i_values                      in sys_refcursor
         , i_delimiter                   in ${smallTypeScalar} default null
@@ -567,7 +582,8 @@ object
         return phr_${largeTypeScalar},
 
     -- Overload of {%link append;7} with {%link phr_utl_boolean "SQL-boolean"} data type input flags.
-    -- %usage Useful for method chaining. Extremely useful in SQL context! The original instance is not affected.
+    -- %usage Useful for method chaining. Extremely useful in SQL context! The instance gets copied, but a persistent LOB
+    -- inside it stays shared (see {%link use_lob;1}).
     member function append
         ( i_values                      in sys_refcursor
         , i_delimiter                   in ${smallTypeScalar} default null
@@ -590,7 +606,8 @@ object
     -- on a copy of this instance, returning the copy as the result.
     --
     -- %param i_value See {%link appendln;1}.
-    -- %usage Useful for method chaining. Very useful in SQL context. The original instance is not affected.
+    -- %usage Useful for method chaining. Very useful in SQL context. The instance gets copied, but a persistent LOB
+    -- inside it stays shared (see {%link use_lob;1}).
     member function appendln
         ( i_value                       in ${smallTypeScalar} default null )
         return phr_${largeTypeScalar},
@@ -698,7 +715,8 @@ object
         ( i_charset                     in varchar2 ),
 
     -- Call {%link set_raw_conversion_charset;1} on a copy of this instance and return the copy.
-    -- %usage Useful for method chaining. Very useful in SQL context. The original instance is not affected.
+    -- %usage Useful for method chaining. Very useful in SQL context. The instance gets copied, but a persistent LOB
+    -- inside it stays shared (see {%link use_lob;1}).
     member function with_raw_conversion_charset
         ( i_charset                     in varchar2 )
         return phr_${largeTypeScalar},
@@ -721,7 +739,8 @@ object
         , i_delimiter                   in ${smallReverseTypeScalar} default null ),
 
     -- Call {%link append_${smallReverseTypeScalar};1} on a copy of this instance and return the copy.
-    -- %usage Useful for method chaining. Very useful in SQL context. The original instance is not affected.
+    -- %usage Useful for method chaining. Very useful in SQL context. The instance gets copied, but a persistent LOB
+    -- inside it stays shared (see {%link use_lob;1}).
     member function append_${smallReverseTypeScalar}
         ( i_value                       in ${smallReverseTypeScalar}
         , i_repeat                      in simple_integer default 1
@@ -744,7 +763,8 @@ object
         , i_amount                      in integer ),
 
     -- Call {%link fragment_delete;1} on a copy of this instance and return the copy.
-    -- %usage Useful for method chaining. Very useful in SQL context. The original instance is not affected.
+    -- %usage Useful for method chaining. Very useful in SQL context. The instance gets copied, but a persistent LOB
+    -- inside it stays shared (see {%link use_lob;1}).
     member function fragment_delete
         ( i_offset                      in integer
         , i_amount                      in integer )
@@ -763,7 +783,8 @@ object
         , i_to                          in integer ),
 
     -- Call {%link fragment_delete_between;1} on a copy of this instance and return the copy.
-    -- %usage Useful for method chaining. Very useful in SQL context. The original instance is not affected.
+    -- %usage Useful for method chaining. Very useful in SQL context. The instance gets copied, but a persistent LOB
+    -- inside it stays shared (see {%link use_lob;1}).
     member function fragment_delete_between
         ( i_from                        in integer
         , i_to                          in integer )
@@ -790,7 +811,8 @@ object
         , i_max_iterations              in simple_integer default 1 ),
 
     -- Call {%link fragment_delete_from_to;1} on a copy of this instance and return the copy.
-    -- %usage Useful for method chaining. Very useful in SQL context. The original instance is not affected.
+    -- %usage Useful for method chaining. Very useful in SQL context. The instance gets copied, but a persistent LOB
+    -- inside it stays shared (see {%link use_lob;1}).
     member function fragment_delete_from_to
         ( i_from                        in ${smallTypeScalar}
         , i_to                          in ${smallTypeScalar} default null
