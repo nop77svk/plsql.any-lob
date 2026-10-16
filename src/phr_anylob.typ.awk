@@ -1,9 +1,9 @@
 BEGIN {
 	if (tolower(i_modus_operandi) == "clob")
 	{
-		defaultEol = "chr(10)";
+		defaultEoln = "chr(10)";
 		smallTypeScalar = "varchar2";
-		smallTypeCollection = "arr_varchar2_4000";
+		smallTypeCollection = "arr_varchar2";
 		smallTypeLengthFunction = "sys.standard.length";
 		smallTypeOverflowFunction = "sys.standard.length";
 		smallTypeMaxLength = "4000";
@@ -28,9 +28,9 @@ BEGIN {
 	}
 	else if (tolower(i_modus_operandi) == "nclob")
 	{
-		defaultEol = "nchr(10)";
+		defaultEoln = "nchr(10)";
 		smallTypeScalar = "nvarchar2";
-		smallTypeCollection = "arr_nvarchar2_2000";
+		smallTypeCollection = "arr_nvarchar2";
 		smallTypeLengthFunction = "sys.standard.length";
 		smallTypeOverflowFunction = "sys.standard.length";
 		smallTypeMaxLength = "2000";
@@ -55,9 +55,9 @@ BEGIN {
 	}
 	else if (tolower(i_modus_operandi) == "blob")
 	{
-		defaultEol = "hextoraw('0A')";
+		defaultEoln = "hextoraw('0A')";
 		smallTypeScalar = "raw";
-		smallTypeCollection = "arr_raw_4000";
+		smallTypeCollection = "arr_raw";
 		smallTypeLengthFunction = "utl_raw.length";
 		smallTypeOverflowFunction = "utl_raw.length";
 		smallTypeMaxLength = "4000";
@@ -82,7 +82,7 @@ BEGIN {
 
 {
 	gsub(/\$\{smallTypeScalar\}/, smallTypeScalar);
-	gsub(/\$\{defaultEol\}/, defaultEol);
+	gsub(/\$\{defaultEoln\}/, defaultEoln);
 	gsub(/\$\{smallTypeCollection\}/, smallTypeCollection);
 	gsub(/\$\{smallTypeMaxLength\}/, smallTypeMaxLength);
 	gsub(/\$\{smallTypeLengthFunction\}/, smallTypeLengthFunction);
