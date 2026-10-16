@@ -335,7 +335,7 @@ object
     -- %usage As oppposed to the dbms_lob.copy, this takes care of any pending appends (internal write buffering) as well.
     member procedure copy_to
         ( io_dest                       in out nocopy ${largeTypeScalar}
-        , i_dest_offset                 in integer default 0 ),
+        , i_dest_offset                 in integer default 1 ),
 
     -- Is the contained ${largeTypeScalarUpper} a temporary LOB or a persistent LOB?
     -- %return PL/SQL boolean
@@ -1498,7 +1498,7 @@ begin
 
     dbms_lob.trim(
         lob_loc => io_dest,
-        newlen => i_dest_offset + self.length()
+        newlen => i_dest_offset + self.length() - 1
     );
 
     self.fsync();
