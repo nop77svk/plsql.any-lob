@@ -1,4 +1,4 @@
-﻿create or replace type arr_blob as table of blob;
+create or replace type arr_blob as table of blob;
 /
 create or replace type arr_clob as table of clob;
 /

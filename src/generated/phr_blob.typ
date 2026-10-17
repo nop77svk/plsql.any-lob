@@ -36,7 +36,7 @@ object
         , i_cache                       in boolean default true
         , i_duration                    in pls_integer default null )
         return phr_blob,
-    -- Overload of {%link new_tmp_lob;1} with {%link phr_utl_boolean "SQL-boolean"} data type input flags.
+    -- Overload of {%link new_tmp_lob;1} with VARCHAR2 input flags (true: 'y', 'yes', '1', 'true', case-insensitive).
     static function new_tmp_lob
         ( i_buffered_writes             in varchar2
         , i_cache                       in varchar2 default 'Y'
@@ -112,7 +112,7 @@ object
         , i_delimiter                   in raw default null )
         return phr_blob,
 
-    -- Overload of {%link init_tmp_lob;1} with {%link phr_utl_boolean "SQL-boolean"} data type input flags.
+    -- Overload of {%link init_tmp_lob;1} with VARCHAR2 input flags (true: 'y', 'yes', '1', 'true', case-insensitive).
     static function init_tmp_lob
         ( i_value                       in raw
         , i_buffered_writes             in varchar2
@@ -134,7 +134,7 @@ object
         , i_repeat                      in simple_integer default 1
         , i_delimiter                   in raw default null )
         return phr_blob,
-    -- Overload of {%link init_tmp_lob;3} with {%link phr_utl_boolean "SQL-boolean"} data type input flags.
+    -- Overload of {%link init_tmp_lob;3} with VARCHAR2 input flags (true: 'y', 'yes', '1', 'true', case-insensitive).
     static function init_tmp_lob
         ( i_value                       in blob
         , i_buffered_writes             in varchar2
@@ -157,7 +157,7 @@ object
         , i_delimiter                   in raw default null )
         return phr_blob,
 
-    -- Overload of {%link init_tmp_lob;5} with {%link phr_utl_boolean "SQL-boolean"} data type input flags.
+    -- Overload of {%link init_tmp_lob;5} with VARCHAR2 input flags (true: 'y', 'yes', '1', 'true', case-insensitive).
     static function init_tmp_lob
         ( i_value                       in phr_blob
         , i_buffered_writes             in varchar2
@@ -190,7 +190,7 @@ object
         , i_duration                    in pls_integer default null )
         return phr_blob,
 
-    -- Overload of {%link init_tmp_lob;7} with {%link phr_utl_boolean "SQL-boolean"} data type input flags.
+    -- Overload of {%link init_tmp_lob;7} with VARCHAR2 input flags (true: 'y', 'yes', '1', 'true', case-insensitive).
     static function init_tmp_lob
         ( i_values                      in arr_raw
         , i_delimiter                   in raw default null
@@ -214,7 +214,7 @@ object
         , i_duration                    in pls_integer default null )
         return phr_blob,
 
-    -- Overload of {%link init_tmp_lob;9} with {%link phr_utl_boolean "SQL-boolean"} data type input flags.
+    -- Overload of {%link init_tmp_lob;9} with VARCHAR2 input flags (true: 'y', 'yes', '1', 'true', case-insensitive).
     static function init_tmp_lob
         ( i_values                      in arr_blob
         , i_delimiter                   in raw default null
@@ -253,7 +253,7 @@ object
         , i_duration                    in pls_integer default null )
         return phr_blob,
 
-    -- Overload of {%link init_tmp_lob;11} with {%link phr_utl_boolean "SQL-boolean"} data type input flags.
+    -- Overload of {%link init_tmp_lob;11} with VARCHAR2 input flags (true: 'y', 'yes', '1', 'true', case-insensitive).
     static function init_tmp_lob
         ( i_values                      in sys_refcursor
         , i_delimiter                   in raw default null
@@ -290,7 +290,7 @@ object
         , i_buffered_writes             in boolean default true )
         return phr_blob,
 
-    -- Overload of {%link use_lob;1} with {%link phr_utl_boolean "SQL-boolean"} data type input flags.
+    -- Overload of {%link use_lob;1} with VARCHAR2 input flags (true: 'y', 'yes', '1', 'true', case-insensitive).
     static function use_lob
         ( i_value                       in blob default null
         , i_buffered_writes             in varchar2 )
@@ -303,7 +303,7 @@ object
     -- (Internal) Reinitialize the internal temporary BLOB (emptying it) with the previous operational
     -- flags of LOB caching and LOB duration.
     --
-    -- %raises ORA-20902 (phr_utl_exc.CE_Invalid_Data_Type) if the contained LOB is not a temporary LOB created by this
+    -- %raises ORA-20902 (phr_anylob_exc.CE_Invalid_Data_Type) if the contained LOB is not a temporary LOB created by this
     -- object, e.g., after {%link use_lob} or {%link tmp_dispose}.
     member procedure tmp_reinitialize,
 
@@ -389,8 +389,8 @@ object
     -- {*} NULL for a NULL LOB locator.
     member function is_persistent return boolean,
 
-    -- Wrapper over {%link is_persistent} with {%link phr_utl_boolean "SQL-boolean"} data type return values.
-    -- %return {%link phr_utl_boolean "SQL-boolean"}
+    -- Wrapper over {%link is_persistent} with VARCHAR2 return values.
+    -- %return 'Y' for true, 'N' for false, NULL for NULL.
     member function is_persistent$ return varchar2,
 
     -- Is the contained BLOB a securefile LOB?
@@ -400,8 +400,8 @@ object
     -- {*} NULL for a NULL LOB locator.
     member function is_secure_file return boolean,
 
-    -- Wrapper over {%link is_secure_file} with {%link phr_utl_boolean "SQL-boolean"} data type return values.
-    -- %return {%link phr_utl_boolean "SQL-boolean"}
+    -- Wrapper over {%link is_secure_file} with VARCHAR2 return values.
+    -- %return 'Y' for true, 'N' for false, NULL for NULL.
     member function is_secure_file$ return varchar2,
 
     -- (Internal) Append a raw to either the contained BLOB or to the internal
@@ -581,7 +581,7 @@ object
         , i_value_suffix                in raw default null )
         return phr_blob,
 
-    -- Overload of {%link append;7} with {%link phr_utl_boolean "SQL-boolean"} data type input flags.
+    -- Overload of {%link append;7} with VARCHAR2 input flags (true: 'y', 'yes', '1', 'true', case-insensitive).
     -- %usage Useful for method chaining. Extremely useful in SQL context! The instance gets copied, but a persistent LOB
     -- inside it stays shared (see {%link use_lob;1}).
     member function append
@@ -638,7 +638,7 @@ object
         return number
         parallel_enable,
 
-    -- Overload of {%link compare;1} with {%link phr_utl_boolean "SQL-boolean"} data type input flags.
+    -- Overload of {%link compare;1} with VARCHAR2 input flags (true: 'y', 'yes', '1', 'true', case-insensitive).
     -- %param i_compare_lengths_first Any value but a "true" flag (e.g., NULL) means false.
     member function compare
         ( i_lob_2                       in phr_blob
@@ -660,7 +660,7 @@ object
         return number
         parallel_enable,
 
-    -- Overload of {%link compare;3} with {%link phr_utl_boolean "SQL-boolean"} data type input flags.
+    -- Overload of {%link compare;3} with VARCHAR2 input flags (true: 'y', 'yes', '1', 'true', case-insensitive).
     member function compare
         ( i_lob_2                       in blob
         , i_compare_lengths_first       in varchar2 )
@@ -727,7 +727,7 @@ object
     -- %param i_value A varchar2 value to be converted via preset conversion charset and appended to the contained BLOB.
     -- %param i_repeat (See {%link append;1}.)
     -- %param i_delimiter (See {%link append;1}.) A varchar2 value, converted the same way as I_VALUE.
-    -- %raises ORA-20901 (phr_utl_exc.CE_Invalid_Argument) if no conversion charset has been set
+    -- %raises ORA-20901 (phr_anylob_exc.CE_Invalid_Argument) if no conversion charset has been set
     -- (see {%link set_raw_conversion_charset}), even when I_VALUE is NULL.
     --
     -- %usage This allows a developer to reduce some amount of boilerplate code when operating over
@@ -753,7 +753,7 @@ object
     --
     -- %param i_offset Starting (1-based) offset of the BLOB portion to be deleted.
     -- %param i_amount Number of BLOB's to be deleted from the contained BLOB at offset I_OFFSET.
-    -- %raises ORA-20901 (phr_utl_exc.CE_Invalid_Argument) for a NULL or negative I_OFFSET, or a NULL or negative I_AMOUNT.
+    -- %raises ORA-20901 (phr_anylob_exc.CE_Invalid_Argument) for a NULL or negative I_OFFSET, or a NULL or negative I_AMOUNT.
     -- ORA-21560 for a zero I_OFFSET (offsets are 1-based) combined with a non-zero I_AMOUNT.
     --
     -- %usage Zero I_AMOUNT does nothing, whatever the I_OFFSET is. I_AMOUNT reaching beyond the end of
@@ -776,7 +776,7 @@ object
     --
     -- %param i_from Starting (1-based) offset of the BLOB portion to be deleted.
     -- %param i_to Ending (1-based, inclusive) offset of the BLOB portion to be deleted.
-    -- %raises ORA-20901 (phr_utl_exc.CE_Invalid_Argument) for a NULL I_FROM or I_TO, or for I_TO being less than I_FROM - 1.
+    -- %raises ORA-20901 (phr_anylob_exc.CE_Invalid_Argument) for a NULL I_FROM or I_TO, or for I_TO being less than I_FROM - 1.
     -- See {%link fragment_delete;1} for the rest.
     member procedure fragment_delete_between
         ( i_from                        in integer
@@ -801,7 +801,7 @@ object
     -- %param i_max_iterations Repeat the deletion this number of times. (default: 1)
     -- Each next search for the I_FROM needle starts right after the previously deleted portion in the original
     -- BLOB. Values below 1 delete nothing.
-    -- %raises ORA-20901 (phr_utl_exc.CE_Invalid_Argument) for a NULL I_FROM.
+    -- %raises ORA-20901 (phr_anylob_exc.CE_Invalid_Argument) for a NULL I_FROM.
     --
     -- %usage The BLOB stays untouched if the I_FROM needle is not found. When the I_TO needle is not found
     -- after an occurrence of I_FROM, that occurrence is not deleted and the iterations end.
@@ -865,14 +865,8 @@ is
 begin
     pragma inline(new_tmp_lob, 'YES');
     return phr_blob.new_tmp_lob(
-        i_buffered_writes => $if $$pfcm_boolean
-            $then is_true(i_buffered_writes)
-            $else lower(i_buffered_writes) in ('y', 'yes', '1', 'true')
-        $end,
-        i_cache => $if $$pfcm_boolean
-            $then is_true(i_cache)
-            $else lower(i_cache) in ('y', 'yes', '1', 'true')
-        $end,
+        i_buffered_writes => lower(i_buffered_writes) in ('y', 'yes', '1', 'true'),
+        i_cache => lower(i_cache) in ('y', 'yes', '1', 'true'),
         i_duration => i_duration
     );
 end;
@@ -922,14 +916,8 @@ begin
     pragma inline(init_tmp_lob, 'YES');
     return init_tmp_lob(
         i_value => i_value,
-        i_buffered_writes => $if $$pfcm_boolean
-            $then is_true(i_buffered_writes)
-            $else lower(i_buffered_writes) in ('y', 'yes', '1', 'true')
-        $end,
-        i_cache => $if $$pfcm_boolean
-            $then is_true(i_cache)
-            $else lower(i_cache) in ('y', 'yes', '1', 'true')
-        $end,
+        i_buffered_writes => lower(i_buffered_writes) in ('y', 'yes', '1', 'true'),
+        i_cache => lower(i_cache) in ('y', 'yes', '1', 'true'),
         i_duration => i_duration,
         i_repeat => i_repeat,
         i_delimiter => i_delimiter
@@ -979,14 +967,8 @@ begin
     pragma inline(init_tmp_lob, 'YES');
     return init_tmp_lob(
         i_value => i_value,
-        i_buffered_writes => $if $$pfcm_boolean
-            $then is_true(i_buffered_writes)
-            $else lower(i_buffered_writes) in ('y', 'yes', '1', 'true')
-        $end,
-        i_cache => $if $$pfcm_boolean
-            $then is_true(i_cache)
-            $else lower(i_cache) in ('y', 'yes', '1', 'true')
-        $end,
+        i_buffered_writes => lower(i_buffered_writes) in ('y', 'yes', '1', 'true'),
+        i_cache => lower(i_cache) in ('y', 'yes', '1', 'true'),
         i_duration => i_duration,
         i_repeat => i_repeat,
         i_delimiter => i_delimiter
@@ -1034,14 +1016,8 @@ begin
     pragma inline(init_tmp_lob, 'YES');
     return init_tmp_lob(
         i_value => i_value,
-        i_buffered_writes => $if $$pfcm_boolean
-            $then is_true(i_buffered_writes)
-            $else lower(i_buffered_writes) in ('y', 'yes', '1', 'true')
-        $end,
-        i_cache => $if $$pfcm_boolean
-            $then is_true(i_cache)
-            $else lower(i_cache) in ('y', 'yes', '1', 'true')
-        $end,
+        i_buffered_writes => lower(i_buffered_writes) in ('y', 'yes', '1', 'true'),
+        i_cache => lower(i_cache) in ('y', 'yes', '1', 'true'),
         i_duration => i_duration,
         i_repeat => i_repeat,
         i_delimiter => i_delimiter
@@ -1097,14 +1073,8 @@ begin
         i_delimiter => i_delimiter,
         i_value_prefix => i_value_prefix,
         i_value_suffix => i_value_suffix,
-        i_buffered_writes => $if $$pfcm_boolean
-            $then is_true(i_buffered_writes)
-            $else lower(i_buffered_writes) in ('y', 'yes', '1', 'true')
-        $end,
-        i_cache => $if $$pfcm_boolean
-            $then is_true(i_cache)
-            $else lower(i_cache) in ('y', 'yes', '1', 'true')
-        $end,
+        i_buffered_writes => lower(i_buffered_writes) in ('y', 'yes', '1', 'true'),
+        i_cache => lower(i_cache) in ('y', 'yes', '1', 'true'),
         i_duration => i_duration
     );
 end;
@@ -1156,14 +1126,8 @@ begin
         i_delimiter => i_delimiter,
         i_value_prefix => i_value_prefix,
         i_value_suffix => i_value_suffix,
-        i_buffered_writes => $if $$pfcm_boolean
-            $then is_true(i_buffered_writes)
-            $else lower(i_buffered_writes) in ('y', 'yes', '1', 'true')
-        $end,
-        i_cache => $if $$pfcm_boolean
-            $then is_true(i_cache)
-            $else lower(i_cache) in ('y', 'yes', '1', 'true')
-        $end,
+        i_buffered_writes => lower(i_buffered_writes) in ('y', 'yes', '1', 'true'),
+        i_cache => lower(i_cache) in ('y', 'yes', '1', 'true'),
         i_duration => i_duration
     );
 end;
@@ -1220,20 +1184,11 @@ begin
         i_values => i_values,
         i_delimiter => i_delimiter,
         i_batch_size => i_batch_size,
-        i_fetch_to_lobs => $if $$pfcm_boolean
-            $then is_true(i_fetch_to_lobs)
-            $else lower(i_fetch_to_lobs) in ('y', 'yes', '1', 'true')
-        $end,
+        i_fetch_to_lobs => lower(i_fetch_to_lobs) in ('y', 'yes', '1', 'true'),
         i_value_prefix => i_value_prefix,
         i_value_suffix => i_value_suffix,
-        i_buffered_writes => $if $$pfcm_boolean
-            $then is_true(i_buffered_writes)
-            $else lower(i_buffered_writes) in ('y', 'yes', '1', 'true')
-        $end,
-        i_cache => $if $$pfcm_boolean
-            $then is_true(i_cache)
-            $else lower(i_cache) in ('y', 'yes', '1', 'true')
-        $end,
+        i_buffered_writes => lower(i_buffered_writes) in ('y', 'yes', '1', 'true'),
+        i_cache => lower(i_cache) in ('y', 'yes', '1', 'true'),
         i_duration => i_duration
     );
 end;
@@ -1271,10 +1226,7 @@ is
 begin
     return use_lob(
         i_value => i_value,
-        i_buffered_writes => $if $$pfcm_boolean
-            $then is_true(i_buffered_writes)
-            $else lower(i_buffered_writes) in ('y', 'yes', '1', 'true')
-        $end
+        i_buffered_writes => lower(i_buffered_writes) in ('y', 'yes', '1', 'true')
     );
 end;
 
@@ -1433,7 +1385,7 @@ member procedure tmp_reinitialize
 is
 begin
     if self.tmp_lob_cached$ is null or self.tmp_lob_duration$ is null then
-        raise_application_error(phr_utl_exc.CE_Invalid_Data_Type, $$plsql_unit||'.tmp_reinitialize(): Not a temporary LOB');
+        raise_application_error(phr_anylob_exc.CE_Invalid_Data_Type, $$plsql_unit||'.tmp_reinitialize(): Not a temporary LOB');
     else
         self.tmp_initialize(
             i_cache => self.tmp_lob_cached$ = 1,
@@ -1483,7 +1435,7 @@ begin
                 buffer => self.primary_buffer$
             );
         else
-            raise_application_error(phr_utl_exc.CE_Invalid_Argument, 'Invalid internal buffering level of "'||self.buffering_level$||'"');
+            raise_application_error(phr_anylob_exc.CE_Invalid_Argument, 'Invalid internal buffering level of "'||self.buffering_level$||'"');
         end if;
 
         self.primary_buffer$ := null;
@@ -1619,15 +1571,11 @@ member function is_persistent$ return varchar2
 is
     l_result                        boolean := self.is_persistent();
 begin
-    $if $$pfcm_boolean $then
-        return phr_utl_boolean.unify(l_result);
-    $else
-        return case l_result
-            when true then 'Y'
-            when false then 'N'
-            else null
-        end;
-    $end
+    return case l_result
+        when true then 'Y'
+        when false then 'N'
+        else null
+    end;
 end;
 
 
@@ -1642,15 +1590,11 @@ member function is_secure_file$ return varchar2
 is
     l_result                        boolean := self.is_secure_file();
 begin
-    $if $$pfcm_boolean $then
-        return phr_utl_boolean.unify(l_result);
-    $else
-        return case l_result
-            when true then 'Y'
-            when false then 'N'
-            else null
-        end;
-    $end
+    return case l_result
+        when true then 'Y'
+        when false then 'N'
+        else null
+    end;
 end;
 
 ----------------------------------------------------------------------------------------------------
@@ -2163,10 +2107,7 @@ begin
         i_values => i_values,
         i_delimiter => i_delimiter,
         i_batch_size => i_batch_size,
-        i_fetch_to_lobs => $if $$pfcm_boolean
-            $then is_true(i_fetch_to_lobs)
-            $else lower(i_fetch_to_lobs) in ('y','yes','1','true')
-        $end,
+        i_fetch_to_lobs => lower(i_fetch_to_lobs) in ('y','yes','1','true'),
         i_value_prefix => i_value_prefix,
         i_value_suffix => i_value_suffix
     );
@@ -2251,10 +2192,7 @@ begin
     pragma inline(compare, 'YES');
     return self.compare(
         i_lob_2 => i_lob_2,
-        i_compare_lengths_first => $if $$pfcm_boolean
-            $then is_true(i_compare_lengths_first)
-            $else lower(i_compare_lengths_first) in ('y','yes','1','true')
-        $end
+        i_compare_lengths_first => lower(i_compare_lengths_first) in ('y','yes','1','true')
     );
 end;
 
@@ -2369,7 +2307,7 @@ member procedure append_varchar2
 is
 begin
     if self.raw_conversion_charset$ is null then
-        raise_application_error(phr_utl_exc.CE_Invalid_Argument, 'No RAW conversion charset specified');
+        raise_application_error(phr_anylob_exc.CE_Invalid_Argument, 'No RAW conversion charset specified');
     end if;
 
     pragma inline(append, 'YES');
@@ -2416,28 +2354,28 @@ begin
     if i_amount = 0 then
         return;
     elsif i_offset < 0 then
-        raise_application_error(phr_utl_exc.CE_Invalid_Argument, 'Negative I_OFFSET of "'||i_offset||'"');
+        raise_application_error(phr_anylob_exc.CE_Invalid_Argument, 'Negative I_OFFSET of "'||i_offset||'"');
     elsif i_offset is null then
-        raise_application_error(phr_utl_exc.CE_Invalid_Argument, 'NULL I_OFFSET');
+        raise_application_error(phr_anylob_exc.CE_Invalid_Argument, 'NULL I_OFFSET');
     elsif i_amount < 0 then
-        raise_application_error(phr_utl_exc.CE_Invalid_Argument, 'Negative I_AMOUNT of "'||i_amount||'"');
+        raise_application_error(phr_anylob_exc.CE_Invalid_Argument, 'Negative I_AMOUNT of "'||i_amount||'"');
     elsif i_amount is null then
-        raise_application_error(phr_utl_exc.CE_Invalid_Argument, 'NULL I_AMOUNT');
+        raise_application_error(phr_anylob_exc.CE_Invalid_Argument, 'NULL I_AMOUNT');
     end if;
 
     --
-    if utl_ident.is_oracle_server and self.is_secure_file() then
-        pragma inline(fsync, 'YES');
-        self.fsync();
-
+    if self.is_secure_file() then
         $if utl_ident.is_oracle_server $then
+            pragma inline(fsync, 'YES');
+            self.fsync();
+
             dbms_lob.fragment_delete(
                 lob_loc => self.the_value$,
                 amount => i_amount,
                 offset => i_offset
             );
         $else
-            raise_application_error(phr_utl_exc.CE_Not_Implemented, 'A thing that should not be');
+            raise_application_error(phr_anylob_exc.CE_Not_Implemented, 'Cannot call dbms_lob.fragment_delete() outside of Oracle server');
         $end
     elsif c_trailing_chunk_offset <= c_lob_length then
         pragma inline(fsync, 'YES');

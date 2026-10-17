@@ -18,7 +18,7 @@ Part of *Peter's PL/SQL foundation* ([LOB builders](http://peterhrasko.wordpress
 - **Read/inspect**: `length`, `is_empty`, `get_value`, `subStr`, `inStr`, `compare`, `is_persistent`, `is_secure_file`.
 - **Modify**: `append` (overloads for `VARCHAR2`/`RAW`, LOBs and `BFILE`), `append_raw`, `trim`, `copy_to`, `fragment_delete`, `fragment_delete_between`, `fragment_delete_from_to`.
 - **Lifecycle control**: `fsync` (flush pending buffers), `tmp_dispose`, `tmp_reinitialize`, `tmp_initialize`.
-- Overloads taking `VARCHAR2` flags (`'Y'`/`'N'`) in addition to `BOOLEAN`, so the API is callable from SQL.
+- Overloads taking `VARCHAR2` flags (`'y'`, `'yes'`, `'1'`, `'true'` mean true, case-insensitive) in addition to `BOOLEAN`, so the API is callable from SQL.
 
 A short usage sketch:
 
@@ -43,6 +43,7 @@ Method-level documentation (parameters, usage notes, raised exceptions, NULL han
 | ---- | -------- |
 | [src/phr_anylob.typ](src/phr_anylob.typ) | Single source template of the type, parametrized by `${...}` placeholders |
 | [src/phr_anylob.typ.awk](src/phr_anylob.typ.awk) | Per-LOB-class placeholder definitions (CLOB / NCLOB / BLOB) |
+| [src/phr_anylob_exc.pks](src/phr_anylob_exc.pks) | Package with the application error codes raised by the types |
 | [src/phr_anylob.typ.sh](src/phr_anylob.typ.sh) | Generator of the three concrete types |
 | [src/generated/](src/generated) | Generated `phr_clob.typ`, `phr_nclob.typ`, `phr_blob.typ` (what you actually install) |
 | [install.sql](install.sql) | Full installation script: cleanup, prerequisites, types, native compilation |
@@ -56,12 +57,12 @@ Method-level documentation (parameters, usage notes, raised exceptions, NULL han
 ## Requirements
 
 - Oracle Database with `DBMS_LOB` and `UTL_I18N` (used for SecureFile/BasicFile detection and charset-aware raw conversion).
-- Two helper packages from *Peter's PL/SQL foundation* that are **not** part of this repository and must exist in the target schema: `phr_utl_boolean` (SQL-boolean conversion) and `phr_utl_exc` (exception helpers).
+- The `utl_ident` package from *Peter's PL/SQL foundation*, which is **not** part of this repository and must exist in the target schema. Its `is_oracle_server` constant selects at compile time the SecureFile path of `fragment_delete`.
 - To regenerate sources: a Bash environment (Cygwin, Git Bash, WSL or Linux) with `gawk`.
 
 ## Installation
 
-Make sure `phr_utl_boolean` and `phr_utl_exc` are installed, then run [install.sql](install.sql) from the repository root in SQL*Plus or SQLcl:
+Make sure `utl_ident` is installed, then run [install.sql](install.sql) from the repository root in SQL*Plus or SQLcl:
 
 ```
 sqlplus user/password@db @install.sql
@@ -69,11 +70,11 @@ sqlplus user/password@db @install.sql
 
 The script stops on the first error and:
 
-1. Drops the `phr_clob`, `phr_nclob`, `phr_blob` types and the `arr_*` collection types if they exist. Dependent objects in the schema get invalidated.
-2. Runs [src/install/prerequisites.sql](src/install/prerequisites.sql) to create the collection types (`arr_clob`, `arr_nclob`, `arr_blob`, `arr_varchar2`, `arr_nvarchar2`, `arr_raw`).
+1. Drops the `phr_clob`, `phr_nclob`, `phr_blob` types, the `phr_anylob_exc` package and the `arr_*` collection types if they exist. Dependent objects in the schema get invalidated.
+2. Runs [src/install/prerequisites.sql](src/install/prerequisites.sql) to create the collection types (`arr_clob`, `arr_nclob`, `arr_blob`, `arr_varchar2`, `arr_nvarchar2`, `arr_raw`) and [src/phr_anylob_exc.pks](src/phr_anylob_exc.pks) to create the `phr_anylob_exc` package with the error codes (ORA-20901 invalid argument, ORA-20902 invalid data type).
 3. Deploys the generated types [phr_clob](src/generated/phr_clob.typ), [phr_nclob](src/generated/phr_nclob.typ) and [phr_blob](src/generated/phr_blob.typ).
 4. Runs [src/install/native-compile.sql](src/install/native-compile.sql) to recompile the types natively with optimization level 3.
-5. Fails if any of the three types is not `VALID` afterwards.
+5. Fails if `phr_anylob_exc` or any of the three types is not `VALID` afterwards.
 
 To uninstall only the `phr_*` types, run [src/install/cleanup.sql](src/install/cleanup.sql).
 

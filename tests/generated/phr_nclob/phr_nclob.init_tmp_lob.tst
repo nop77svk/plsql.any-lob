@@ -3,11 +3,11 @@ PL/SQL Developer Test script 3.0
 declare
     c_assertion_failed_error        constant pls_integer := -20000;
     c_no_error                      constant pls_integer := 0;
-    c_invalid_argument_error        constant pls_integer := phr_utl_exc.CE_Invalid_Argument;
+    c_invalid_argument_error        constant pls_integer := phr_anylob_exc.CE_Invalid_Argument;
     c_value_error                   constant pls_integer := -6502;
     c_invalid_lob_length_error      constant pls_integer := -21560;
     c_null_self_error               constant pls_integer := -30625;
-    c_invalid_data_type_error       constant pls_integer := phr_utl_exc.CE_Invalid_Data_Type;
+    c_invalid_data_type_error       constant pls_integer := phr_anylob_exc.CE_Invalid_Data_Type;
     c_flag_yes                      constant varchar2(1) := 'Y';
     c_flag_no                       constant varchar2(1) := 'N';
     c_length_less                   constant number := -0.1;
