@@ -63,9 +63,9 @@ begin
         and UO.status != 'VALID';
 
     if l_problem_count > 0 then
-        raise_application_error
-            ( c_installation_failed_code
-            , l_problem_count || ' phr_anylob_exc/phr_clob/phr_nclob/phr_blob unit(s) not VALID, check user_errors (is utl_ident installed?)' );
+        raise_application_error(c_installation_failed_code,
+            l_problem_count || ' phr_anylob_exc/phr_clob/phr_nclob/phr_blob unit(s) not VALID, check user_errors (is utl_ident installed?)'
+        );
     end if;
 
     dbms_output.put_line('phr_anylob_exc, phr_clob, phr_nclob and phr_blob installed and VALID');
