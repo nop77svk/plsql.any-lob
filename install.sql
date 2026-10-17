@@ -34,8 +34,8 @@ end;
 /
 
 prompt Deploying prerequisites
-@@src/install/prerequisites.sql
-@@src/phr_anylob_exc.pks
+@@src/install/scalar-collections.sql
+@@src/install/phr_anylob_exc.pks
 
 prompt Deploying phr_clob
 @@src/generated/phr_clob.typ
