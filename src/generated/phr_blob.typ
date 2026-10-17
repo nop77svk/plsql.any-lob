@@ -2375,7 +2375,7 @@ begin
                 offset => i_offset
             );
         $else
-            raise_application_error(phr_utl_exc.CE_Not_Implemented, 'Cannot call dbms_lob.fragment_delete() outside of Oracle server');
+            raise_application_error(phr_anylob_exc.CE_Not_Implemented, 'Cannot call dbms_lob.fragment_delete() outside of Oracle server');
         $end
     elsif c_trailing_chunk_offset <= c_lob_length then
         pragma inline(fsync, 'YES');
